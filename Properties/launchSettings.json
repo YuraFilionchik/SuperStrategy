@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SuperStrategy": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
