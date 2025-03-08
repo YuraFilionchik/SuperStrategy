@@ -116,6 +116,8 @@
                 // Если свеча не финальная, то выходим
                 if (candle.State != CandleStates.Finished)
                     return;
+                
+                #region Обработка индикаторов и сохранение текущих значений
 
                 // Сохраняем предыдущие значения
                 _previousFastEma = _currentFastEma;
@@ -123,10 +125,9 @@
                 _previousRsi = _currentRsi;
                 _previousObv = _currentObv;
 
-                // Обработка индикаторов и сохранение текущих значений
                 _fastEma.Process(candle);
                 _currentFastEma = _fastEma.GetCurrentValue();
-
+                
                 _slowEma.Process(candle);
                 _currentSlowEma = _slowEma.GetCurrentValue();
 
@@ -168,7 +169,7 @@
                     _currentUpperBand = _currentMiddleBand * 1.02m;
                     _currentLowerBand = _currentMiddleBand * 0.98m;
                 }
-
+                #endregion
                 // Логирование значений индикаторов
                 //LogInfo($"Индикаторы: FastEMA={_currentFastEma:F8}, SlowEMA={_currentSlowEma:F8}, RSI={_currentRsi:F2}, ATR={_currentAtr:F8}");
                 //LogInfo($"Bollinger: Mid={_currentMiddleBand:F8}, Up={_currentUpperBand:F8}, Low={_currentLowerBand:F8}");
@@ -183,8 +184,14 @@
                 // Проверка сигналов и управление позицией
                 if (_isPositionOpened)
                 {
-                    LogInfo($"Position is OPENED, POSITION = {Position}");
-                    ManagePosition(candle);
+                    //ManagePosition(candle);
+                    if ((CurrentTime - _positionOpenTime).TotalMinutes > 60)
+                    {
+                        ClosePosition();
+                        LogInfo($"ClosePosition - {CurrentTime}");
+                        _isPositionOpened = false;
+                        return;
+                    }
                 }
                 else
                 {

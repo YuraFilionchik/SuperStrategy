@@ -26,6 +26,16 @@
         private StrategyParam<DataType> _timeFrame1h;
         private StrategyParam<decimal> _minVolatilityMultiplier;
 
+        // Улучшенное отслеживание сделок
+        private int _winCount = 0;
+        private int _lossCount = 0;
+        private decimal _totalPnL = 0;
+        private decimal _winningPnL = 0;
+        private decimal _losingPnL = 0;
+        private decimal _lastEntryPrice = 0;
+        private decimal _tradeEntryVolume = 0;
+
+
         /// <summary>
         /// Инициализация параметров стратегии
         /// </summary>
@@ -80,9 +90,9 @@
             _timeFrame1h = Param("TimeFrame1h", DataType.TimeFrame(TimeSpan.FromHours(1)))
                 .SetDisplay("Таймфрейм 1ч", "Таймфрейм для определения тренда (1 час)", "Таймфреймы");
             
-            _minVolatilityMultiplier = Param("MinVolatilityMultiplier", 10.0m)
+            _minVolatilityMultiplier = Param("MinVolatilityMultiplier", 1.0m)
                 .SetDisplay("Множитель минимальной волатильности",
-               "Множитель ценового шага для определения минимальной приемлемой волатильности (по умолчанию 10.0)",
+               "Множитель ценового шага для определения минимальной приемлемой волатильности (по умолчанию 1.0)",
                "Фильтры");
         }
 

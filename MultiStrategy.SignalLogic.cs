@@ -8,63 +8,71 @@
         /// <summary>
         /// Проверка сигналов для входа в позицию
         /// </summary>
-        private void CheckEntrySignals(ICandleMessage candle)
-        {
-            try
-            {
-                // Проверка, что все индикаторы сформированы
-                if (!AreIndicatorsFormed())
-                    return;
+        //private void CheckEntrySignals(ICandleMessage candle)
+        //{
+        //    try
+        //    {
+        //        // Проверка, что все индикаторы сформированы
+        //        if (!AreIndicatorsFormed())
+        //            return;
 
-                // Получение текущей цены
-                decimal lastPrice = candle.ClosePrice;
+        //        // Получение текущей цены
+        //        decimal lastPrice = candle.ClosePrice;
 
-                //LogInfo($"Проверка сигналов: Цена={lastPrice}, FastEMA={_currentFastEma:F8}, SlowEMA={_currentSlowEma:F8}");
+        //        //LogInfo($"Проверка сигналов: Цена={lastPrice}, FastEMA={_currentFastEma:F8}, SlowEMA={_currentSlowEma:F8}");
 
-                // Проверка фильтров
-                if (!CheckTimeFilter() || !CheckVolatilityFilter())
-                {
-                    //LogInfo("Фильтры не пройдены, сигнал отклонен");
-                    return;
-                }
+        //        // Проверка фильтров
+        //        if (!CheckTimeFilter() || !CheckVolatilityFilter())
+        //        {
+        //            //LogInfo("Фильтры не пройдены, сигнал отклонен");
+        //            return;
+        //        }
 
-                // Проверка сигналов для Long позиции
-                bool isLongSignal = _currentFastEma > _currentSlowEma && // Быстрая EMA выше медленной
-                                   _previousFastEma <= _previousSlowEma && // Пересечение снизу вверх
-                                   lastPrice > _currentLongEma && // Цена выше длинной EMA
-                                   _currentRsi > 40 && _previousRsi < 30 && // RSI поднимается выше 40 с уровней ниже 30
-                                   lastPrice <= _currentLowerBand * 1.02m && // Цена около нижней полосы Боллинджера
-                                   _currentObv > _previousObv; // Объем растет
+        //        // Проверка сигналов для Long позиции
+        //        bool isLongSignal = _currentFastEma > _currentSlowEma && // Быстрая EMA выше медленной
+        //                           _previousFastEma <= _previousSlowEma && // Пересечение снизу вверх
+        //                           lastPrice > _currentLongEma && // Цена выше длинной EMA
+        //                           _currentRsi > 40 && _previousRsi < 30 && // RSI поднимается выше 40 с уровней ниже 30
+        //                           lastPrice <= _currentLowerBand * 1.02m && // Цена около нижней полосы Боллинджера
+        //                           _currentObv > _previousObv; // Объем растет
 
-                // Проверка сигналов для Short позиции
-                bool isShortSignal = _currentFastEma < _currentSlowEma && // Быстрая EMA ниже медленной
-                                    _previousFastEma >= _previousSlowEma && // Пересечение сверху вниз
-                                    lastPrice < _currentLongEma && // Цена ниже длинной EMA
-                                    _currentRsi < 60 && _previousRsi > 70 && // RSI опускается ниже 60 с уровней выше 70
-                                    lastPrice >= _currentUpperBand * 0.98m && // Цена около верхней полосы Боллинджера
-                                    _currentObv < _previousObv; // Объем падает
+        //        // Проверка сигналов для Short позиции
+        //        bool isShortSignal = _currentFastEma < _currentSlowEma && // Быстрая EMA ниже медленной
+        //                            _previousFastEma >= _previousSlowEma && // Пересечение сверху вниз
+        //                            lastPrice < _currentLongEma && // Цена ниже длинной EMA
+        //                            _currentRsi < 60 && _previousRsi > 70 && // RSI опускается ниже 60 с уровней выше 70
+        //                            lastPrice >= _currentUpperBand * 0.98m && // Цена около верхней полосы Боллинджера
+        //                            _currentObv < _previousObv; // Объем падает
 
-                // Логирование сигналов
-                if (isLongSignal)
-                    LogInfo("Обнаружен LONG сигнал");
-                if (isShortSignal)
-                    LogInfo("Обнаружен SHORT сигнал");
+        //        // Логирование сигналов
+        //        if (isLongSignal)
+        //            LogInfo("Обнаружен LONG сигнал");
+        //        if (isShortSignal)
+        //            LogInfo("Обнаружен SHORT сигнал");
 
-                // Открытие позиции
-                if (isLongSignal && CheckGlobalTrendFilter(true))
-                {
-                    OpenPosition(Sides.Buy, lastPrice);
-                }
-                else if (isShortSignal && CheckGlobalTrendFilter(false))
-                {
-                    OpenPosition(Sides.Sell, lastPrice);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogErrorDetailed("Ошибка при проверке сигналов входа", ex);
-            }
-        }
+        //        // Открытие позиции
+        //        if (isLongSignal && CheckGlobalTrendFilter(true))
+        //        {
+        //            //OpenPosition(Sides.Buy, lastPrice);
+        //            BuyMarket(1000);
+        //            _isPositionOpened = true;
+        //            _positionOpenTime = CurrentTime;
+        //            LogInfo($"BuyMarket - {CurrentTime}");
+        //        }
+        //        else if (isShortSignal && CheckGlobalTrendFilter(false))
+        //        {
+        //            //OpenPosition(Sides.Sell, lastPrice);
+        //            SellMarket(1000);
+        //            _isPositionOpened = true;
+        //            _positionOpenTime = CurrentTime;
+        //            LogInfo($"SellMarket - {CurrentTime}");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        LogErrorDetailed("Ошибка при проверке сигналов входа", ex);
+        //    }
+        //}
 
         /// <summary>
         /// Проверка сигналов разворота
@@ -172,6 +180,67 @@
             {
                 LogError($"Ошибка в фильтре глобального тренда: {ex.Message}");
                 return true; // По умолчанию пропускаем сигнал при ошибке
+            }
+        }
+
+        private bool CheckLongEntrySignal(decimal currentPrice)
+        {
+            return _currentFastEma > _currentSlowEma && // Быстрая EMA выше медленной
+            _previousFastEma <= _previousSlowEma && // Пересечение снизу вверх
+            currentPrice > _currentLongEma && // Цена выше длинной EMA
+            _currentRsi > 40 && _previousRsi < 30 && // RSI поднимается выше 40 с уровней ниже 30
+            currentPrice <= _currentLowerBand * 1.02m && // Цена около нижней полосы Боллинджера
+            _currentObv > _previousObv; // Объем растет
+        }
+
+        private bool CheckShortEntrySignal(decimal currentPrice)
+        {
+            return _currentFastEma < _currentSlowEma && // Быстрая EMA ниже медленной
+                   _previousFastEma >= _previousSlowEma && // Пересечение сверху вниз
+                   currentPrice < _currentLongEma && // Цена ниже длинной EMA
+                   _currentRsi < 60 && _previousRsi > 70 && // RSI опускается ниже 60 с уровней выше 70
+                   currentPrice >= _currentUpperBand * 0.98m && // Цена около верхней полосы Боллинджера
+                   _currentObv < _previousObv; // Объем падает
+        }
+
+        private void CheckEntrySignals(ICandleMessage candle)
+        {
+            try
+            {
+                // Проверка, что все индикаторы сформированы
+                if (!AreIndicatorsFormed())
+                    return;
+
+                // Получение текущей цены
+                decimal currentPrice = candle.ClosePrice;
+
+                // Проверка фильтров
+                if (!CheckTimeFilter() || !CheckVolatilityFilter())
+                    return;
+
+                // Проверка сигналов
+                bool isLongSignal = CheckLongEntrySignal(currentPrice);
+                bool isShortSignal = CheckShortEntrySignal(currentPrice);
+
+                // Логирование сигналов
+                if (isLongSignal)
+                    LogInfo("Обнаружен LONG сигнал");
+                if (isShortSignal)
+                    LogInfo("Обнаружен SHORT сигнал");
+
+                // Открытие позиции
+                if (isLongSignal && CheckGlobalTrendFilter(true))
+                {
+                    OpenPosition(Sides.Buy, currentPrice);
+                }
+                else if (isShortSignal && CheckGlobalTrendFilter(false))
+                {
+                    OpenPosition(Sides.Sell, currentPrice);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogErrorDetailed("Ошибка при проверке сигналов входа", ex);
             }
         }
     }

@@ -8,7 +8,7 @@
 
     public partial class MultiStrategy
     {
-        private bool LogToFile = false;
+        private bool LogToFile = true;
         private bool LogToConsole = true;
         // Логирование
         private readonly Ecng.Logging.LogManager _logManager = new Ecng.Logging.LogManager();

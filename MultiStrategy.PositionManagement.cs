@@ -3,6 +3,7 @@
     using System;
     using StockSharp.Messages;
     using StockSharp.BusinessEntities;
+    using DevExpress.XtraSpellChecker.Parser;
 
     public partial class MultiStrategy
     {
@@ -22,7 +23,7 @@
             {
                 if (price == 0)
                 {
-                    LogError("Price value is 0");
+                    LogError("Нулевое значение цены");
                     return;
                 }
                 // Если уже есть открытая позиция, выходим
@@ -39,24 +40,15 @@
                     ? price - (atr * StopLossMultiplier)
                     : price + (atr * StopLossMultiplier);
 
-                decimal takeProfit1 = side == Sides.Buy
-                    ? price + (atr * TakeProfitMultiplier1)
-                    : price - (atr * TakeProfitMultiplier1);
-
-                decimal takeProfit2 = side == Sides.Buy
-                    ? price + (atr * TakeProfitMultiplier2)
-                    : price - (atr * TakeProfitMultiplier2);
-
-                decimal takeProfit3 = side == Sides.Buy
+                decimal takeProfitPrice = side == Sides.Buy
                     ? price + (atr * TakeProfitMultiplier3)
                     : price - (atr * TakeProfitMultiplier3);
 
-                
                 // Расчет объема позиции
-                decimal volume = TradeVolume/price;
-                LogInfo($"Portfolio={Portfolio.CurrentValue}{Portfolio.Currency}, /t RiskPerTrade={RiskPerTrade*100}%");
+                decimal volume = TradeVolume / price;
+                LogInfo($"Portfolio={Portfolio?.CurrentValue}{Portfolio?.Currency}, RiskPerTrade={RiskPerTrade * 100}%");
                 decimal riskAmountUSD = TradeVolume * RiskPerTrade;
-                
+
                 // Если включено управление рисками, рассчитываем объем на основе риска
                 if (RiskPerTrade > 0 && Portfolio != null && Portfolio.CurrentValue > 0)
                 {
@@ -69,7 +61,7 @@
                         // Используем меньшее из двух значений, чтобы не превысить риск
                         volume = Math.Min(volume, riskBasedVolume);
                     }
-                    LogInfo($"StopLoss={(100*priceRisk/price).ToString("N2")}%");
+                    LogInfo($"StopLoss={(100 * priceRisk / price).ToString("N2")}%");
                 }
 
                 // Округление объема до шага объема инструмента
@@ -79,32 +71,32 @@
                 // Проверка минимального объема
                 if (volume < volumeStep || volume <= 0)
                     volume = volumeStep;
-                   
-                LogInfo($"Risk amount={riskAmountUSD}{Portfolio.Currency}, /t position volume={(volume*price).ToString("N2")}");
+
+                LogInfo($"Risk amount={riskAmountUSD}{Portfolio?.Currency}, position volume={(volume * price).ToString("N2")}");
+
+                // Логирование уровней
+                LogLevels(price, stopLossPrice, takeProfitPrice);
 
                 // Создание рыночного ордера
                 if (side == Sides.Buy)
                     BuyMarket(volume);
                 else
                     SellMarket(volume);
-                
+
                 // Обновление состояния стратегии
-                //_isPositionOpened = true;
                 _isTrailingStopActivated = false;
                 _currentStopLoss = stopLossPrice;
                 _currentTrailingStop = stopLossPrice;
                 _positionOpenTime = CurrentTime;
 
-                //StartProtection(
-                //    takeProfit: new Unit(atr * TakeProfitMultiplier3, UnitTypes.Absolute),
-                //    stopLoss: new Unit(atr * StopLossMultiplier, UnitTypes.Absolute),
-                //    isStopTrailing: true,
-                //    useMarketOrders: true
-                //);
-
-                // Логирование открытия позиции
-                LogInfo($"Открыта {side} позиция. Цена: {price}, Объем: {volume}контрактов ({(volume * price).ToString("N2")}$), SL: {stopLossPrice:F8}, " +
-                       $"TP1: {takeProfit1:F8}, TP2: {takeProfit2:F8}, TP3: {takeProfit3:F8}");
+                // Использование встроенной защиты StockSharp
+                // Обратите внимание на правильную передачу параметров
+                StartProtection(
+                    takeProfit: new Unit(Math.Abs(takeProfitPrice - price), UnitTypes.Absolute),
+                    stopLoss: new Unit(Math.Abs(stopLossPrice - price), UnitTypes.Absolute),
+                    isStopTrailing: true,
+                    useMarketOrders: true
+                );
             }
             catch (Exception ex)
             {
@@ -122,15 +114,18 @@
                 // Получение текущей цены
                 decimal currentPrice = candle.ClosePrice;
 
-                // Если позиции нет, сбрасываем состояние
-                if (Position == 0)
+                //Если позиции нет, сбрасываем состояние
+                decimal position = GetCurrentPosition();
+
+                if (position == 0)
                 {
-                    //_isPositionOpened = false;
+                    _isPositionOpened = false;
                     return;
                 }
-                
+
+                LogInfo($"ManagePosition/ position = {position}");
                 // Определение направления позиции
-                Sides positionSide = Position > 0 ? Sides.Buy : Sides.Sell;
+                Sides positionSide = position > 0 ? Sides.Buy : Sides.Sell;
 
                 // Проверка временного выхода (максимальное время в сделке)
                 if ((CurrentTime - _positionOpenTime).TotalMinutes > 60)
@@ -140,7 +135,7 @@
                 }
 
                 // Проверка временного выхода для половины позиции (30 минут)
-                if ((CurrentTime - _positionOpenTime).TotalMinutes > 30 && Math.Abs(Position) == TradeVolume)
+                if ((CurrentTime - _positionOpenTime).TotalMinutes > 30 && Math.Abs(position) == TradeVolume)
                 {
                     ClosePartialPosition(positionSide, currentPrice, 0.5m, "Половина позиции закрыта по времени (30 минут)");
                 }
@@ -178,6 +173,7 @@
         {
             try
             {
+                var position = GetCurrentPosition();
                 // Используем первую сделку для определения цены входа или текущую цену
                 var trades = MyTrades.ToArray();
                 decimal entryPrice = trades.Length > 0 ? trades[0].Trade.Price : currentPrice;
@@ -198,7 +194,7 @@
                     : entryPrice - (atr * TakeProfitMultiplier3);
 
                 // Расчет процента текущего объема от начального
-                decimal currentVolumePercent = Math.Abs(Position) / TradeVolume;
+                decimal currentVolumePercent = Math.Abs(position) / TradeVolume;
 
                 // Проверка TP1 (30% позиции)
                 if (currentVolumePercent > 0.7m &&
@@ -290,12 +286,13 @@
         {
             try
             {
+                var position = GetCurrentPosition();
                 // Если позиции нет, выходим
-                if (Position == 0)
+                if (position == 0)
                     return;
 
                 // Объем для закрытия части позиции
-                decimal volumeToClose = Math.Round(Math.Abs(Position) * part, 8);
+                decimal volumeToClose = Math.Round(Math.Abs(position) * part, 8);
 
                 // Округление объема до шага объема инструмента
                 decimal volumeStep = Security.VolumeStep ?? 0.01m;
@@ -306,7 +303,7 @@
                     volumeToClose = volumeStep;
 
                 // Если объем слишком мал, закрываем всю позицию
-                if (volumeToClose >= Math.Abs(Position) - volumeStep)
+                if (volumeToClose >= Math.Abs(position) - volumeStep)
                 {
                     ClosePosition(positionSide, price, reason);
                     return;
@@ -334,22 +331,23 @@
         {
             try
             {
+                var position = GetCurrentPosition();
                 // Если позиции нет, выходим
-                if (Position == 0)
+                if (position == 0)
                     return;
 
                 // Закрытие всей позиции
                 if (positionSide == Sides.Buy)
-                    SellMarket(Math.Abs(Position));
+                    SellMarket(Math.Abs(position));
                 else
-                    BuyMarket(Math.Abs(Position));
+                    BuyMarket(Math.Abs(position));
 
                 // Сброс состояния стратегии
                 _isPositionOpened = false;
                 _isTrailingStopActivated = false;
 
                 // Логирование закрытия позиции
-                LogInfo($"Позиция закрыта. Цена: {price}, Объем: {Math.Abs(Position)}, Причина: {reason}");
+                LogInfo($"Позиция закрыта. Цена: {price}, Объем: {Math.Abs(position)}, Причина: {reason}");
             }
             catch (Exception ex)
             {
@@ -357,6 +355,18 @@
             }
         }
 
+        private decimal GetCurrentPosition()
+        {
+            
+            if (Position == 0)
+            {
+                var p = Positions?.FirstOrDefault()?.CurrentValue;
+                if (p != null)
+                    return (decimal)p;
 
+            }
+            
+                return Position;
+        }
     }
 }
