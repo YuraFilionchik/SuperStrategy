@@ -2,6 +2,7 @@
 {
     using System;
     using GeneticSharp;
+    using StockSharp.Algo.Candles;
     using StockSharp.Algo.Indicators;
     using StockSharp.Messages;
 
@@ -97,7 +98,7 @@
                 _currentLongEma = _longEma.GetCurrentValue();
 
                 // Обновляем график
-                UpdateChart(candle);
+               // UpdateChart(candle);
 
                // LogInfo($"Обработана 1-часовая свеча: {candle.OpenTime}, LongEMA={_currentLongEma}");
             }
@@ -129,30 +130,24 @@
                 _previousRsi = _currentRsi;
                 _previousObv = _currentObv;
 
-                _fastEma.Process(candle);
+                ProcessIndicators(candle);
+
                 _currentFastEma = _fastEma.GetCurrentValue();
-                
-                _slowEma.Process(candle);
                 _currentSlowEma = _slowEma.GetCurrentValue();
-
-                _rsi.Process(candle);
                 _currentRsi = _rsi.GetCurrentValue();
-
-                _atr.Process(candle);
                 _currentAtr = _atr.GetCurrentValue();
-
-                _obv.Process(candle);
                 _currentObv = _obv.GetCurrentValue();
 
                 // Обработка Bollinger Bands
                 try
                 {
-                    _bollingerBands.Process(candle);
                     _currentMiddleBand = _bollingerBands.MovingAverage.GetCurrentValue();
 
                     // Для верхней и нижней полосы используем несколько подходов
                     if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
                     {
+                        _bollingerBands.UpBand.Process(candle);
+                        _bollingerBands.LowBand.Process(candle);
                         _currentUpperBand = _bollingerBands.UpBand.GetCurrentValue();
                         _currentLowerBand = _bollingerBands.LowBand.GetCurrentValue();
                     }
@@ -186,7 +181,7 @@
                     return;
                 decimal tradeVolume = 1000m;
                 var Position = GetCurrentPosition();
-                var rsi = _rsi.GetCurrentValue();
+                var rsi = _currentRsi;
                 //test
                 if (Position == 0)
                 {
@@ -241,6 +236,16 @@
                    _bollingerBands.IsFormed &&
                    _atr.IsFormed &&
                    _obv.IsFormed;
+        }
+        
+        void ProcessIndicators(ICandleMessage candle)
+        {
+            _fastEma.Process(candle);
+            _slowEma.Process(candle);
+            _rsi.Process(candle);
+            _atr.Process(candle);
+            _obv.Process(candle);
+            _bollingerBands.Process(candle);
         }
     }
 }

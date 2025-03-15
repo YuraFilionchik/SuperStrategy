@@ -41,12 +41,13 @@
 
                 // Add elements to chart
                 _candleElement = priceArea.AddCandles();
-                _tradesElement = priceArea.AddTrades();
 
                 // Add order and trade visualization
-                _ordersElement = DrawOrders(priceArea);
+                //_ordersElement = DrawOrders(priceArea);
                 _tradesElement = DrawOwnTrades(priceArea);
-
+                //_tradesElement = priceArea.AddTrades();
+                //_tradesElement.DrawSize = 5;
+                
                 // Add indicators
                 _fastEmaElement = priceArea.AddIndicator(_fastEma);
                 _fastEmaElement.Color = System.Drawing.Color.Blue;
@@ -155,42 +156,34 @@
 
                 var data = chart.CreateData();
                 var group = data.Group(candle.OpenTime);
-
+                
+                
                 // Добавляем данные на график
                 group.Add(_candleElement, candle);
-
-                // получаем объекты IIndicatorValue непосредственно из индикаторов
 
                 // Добавляем индикаторы, если они сформированы
                 if (_fastEma.IsFormed)
                 {
-                    var fastEmaValue = _fastEma.Process(candle);
-                    group.Add(_fastEmaElement, fastEmaValue);
+                    group.Add(_fastEmaElement, _fastEma.GetCurrentValue<IIndicatorValue>() );
                 }
 
                 if (_slowEma.IsFormed)
                 {
-                    var slowEmaValue = _slowEma.Process(candle);
-                    group.Add(_slowEmaElement, slowEmaValue);
+                    group.Add(_slowEmaElement, _slowEma.GetCurrentValue<IIndicatorValue>());
                 }
 
                 if (_longEma.IsFormed)
                 {
-                    var longEmaValue = _longEma.Process(candle);
-                    group.Add(_longEmaElement, longEmaValue);
+                    group.Add(_longEmaElement, _longEma.GetCurrentValue<IIndicatorValue>());
                 }
 
                 if (_rsi.IsFormed)
                 {
-                    var rsiValue = _rsi.Process(candle);
-                    group.Add(_rsiElement, rsiValue);
+                    group.Add(_rsiElement, _rsi.GetCurrentValue<IIndicatorValue>());
                 }
 
                 if (_bollingerBands.IsFormed)
                 {
-                    var bollingerValue = _bollingerBands.Process(candle);
-                    //group.Add(_bollingerMiddleElement, bollingerValue);
-
                     // Для верхней и нижней полос используйте соответствующие значения
                     if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
                     {

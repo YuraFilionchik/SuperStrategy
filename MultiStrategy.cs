@@ -1,11 +1,13 @@
 ﻿namespace SuperStrategy
 {
     using System;
+    using DevExpress.Charts.Model;
     using Ecng.Logging;
     using NuGet.Common;
     using StockSharp.Algo;
     using StockSharp.Algo.Strategies;
     using StockSharp.BusinessEntities;
+    using StockSharp.Charting;
     using StockSharp.Logging;
     using StockSharp.Messages;
 
@@ -95,6 +97,14 @@
         protected override void OnNewMyTrade(MyTrade trade)
         {
             base.OnNewMyTrade(trade);
+            var chart = GetChart();
+            if (chart != null)
+            {
+                var data = chart.CreateData();
+                data.Group(trade.Trade.LocalTime).Add(_tradesElement, trade);
+                chart.Draw(data);
+            }
+            
             var Position = GetCurrentPosition();
             _isPositionOpened = Position != 0;
             
