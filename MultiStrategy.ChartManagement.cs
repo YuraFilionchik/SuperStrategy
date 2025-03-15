@@ -187,8 +187,8 @@
                     // Для верхней и нижней полос используйте соответствующие значения
                     if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
                     {
-                        var upBandValue = _bollingerBands.UpBand.Process(candle);
-                        var lowBandValue = _bollingerBands.LowBand.Process(candle);
+                        var upBandValue = _bollingerBands.UpBand.GetCurrentValue<IIndicatorValue>();
+                        var lowBandValue = _bollingerBands.LowBand.GetCurrentValue<IIndicatorValue>();
 
                         group.Add(_bollingerUpperElement, upBandValue);
                         group.Add(_bollingerLowerElement, lowBandValue);

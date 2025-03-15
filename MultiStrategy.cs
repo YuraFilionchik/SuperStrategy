@@ -101,7 +101,7 @@
             if (chart != null)
             {
                 var data = chart.CreateData();
-                data.Group(trade.Trade.LocalTime).Add(_tradesElement, trade);
+                data.Group(trade.Trade.ServerTime).Add(_tradesElement, trade);
                 chart.Draw(data);
             }
             

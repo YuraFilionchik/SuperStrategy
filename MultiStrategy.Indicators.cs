@@ -132,42 +132,9 @@
 
                 ProcessIndicators(candle);
 
-                _currentFastEma = _fastEma.GetCurrentValue();
-                _currentSlowEma = _slowEma.GetCurrentValue();
-                _currentRsi = _rsi.GetCurrentValue();
-                _currentAtr = _atr.GetCurrentValue();
-                _currentObv = _obv.GetCurrentValue();
+                
 
-                // Обработка Bollinger Bands
-                try
-                {
-                    _currentMiddleBand = _bollingerBands.MovingAverage.GetCurrentValue();
-
-                    // Для верхней и нижней полосы используем несколько подходов
-                    if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
-                    {
-                        _bollingerBands.UpBand.Process(candle);
-                        _bollingerBands.LowBand.Process(candle);
-                        _currentUpperBand = _bollingerBands.UpBand.GetCurrentValue();
-                        _currentLowerBand = _bollingerBands.LowBand.GetCurrentValue();
-                    }
-                    else
-                    {
-                        // Расчет на основе SMA и стандартного отклонения
-                        decimal stdDev = 2.0m;
-                        decimal volatility = _currentAtr;
-                        _currentUpperBand = _currentMiddleBand + (volatility * stdDev);
-                        _currentLowerBand = _currentMiddleBand - (volatility * stdDev);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogError($"Ошибка при обработке Bollinger Bands: {ex.Message}");
-                    // Используем SMA вместо Bollinger в случае ошибки
-                    _currentMiddleBand = _currentSlowEma;
-                    _currentUpperBand = _currentMiddleBand * 1.02m;
-                    _currentLowerBand = _currentMiddleBand * 0.98m;
-                }
+                
                 #endregion
                 // Логирование значений индикаторов
                 //LogInfo($"Индикаторы: FastEMA={_currentFastEma:F8}, SlowEMA={_currentSlowEma:F8}, RSI={_currentRsi:F2}, ATR={_currentAtr:F8}");
@@ -246,6 +213,36 @@
             _atr.Process(candle);
             _obv.Process(candle);
             _bollingerBands.Process(candle);
+
+            _currentFastEma = _fastEma.GetCurrentValue();
+            _currentSlowEma = _slowEma.GetCurrentValue();
+            _currentRsi = _rsi.GetCurrentValue();
+            _currentAtr = _atr.GetCurrentValue();
+            _currentObv = _obv.GetCurrentValue();
+
+            // Обработка Bollinger Bands
+            try
+            {
+                _currentMiddleBand = _bollingerBands.MovingAverage.GetCurrentValue();
+
+                // Для верхней и нижней полосы используем несколько подходов
+                if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
+                {
+                    _bollingerBands.UpBand.Process(candle);
+                    _bollingerBands.LowBand.Process(candle);
+                    _currentUpperBand = _bollingerBands.UpBand.GetCurrentValue();
+                    _currentLowerBand = _bollingerBands.LowBand.GetCurrentValue();
+                }
+                else
+                {
+                    _currentUpperBand = 0;
+                    _currentLowerBand = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"Ошибка при обработке Bollinger Bands: {ex.Message}");
+            }
         }
     }
 }
