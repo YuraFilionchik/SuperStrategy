@@ -1,6 +1,7 @@
 ﻿namespace SuperStrategy
 {
     using System;
+    using GeneticSharp;
     using StockSharp.Algo.Indicators;
     using StockSharp.Messages;
 
@@ -36,7 +37,7 @@
         private decimal _currentLowerBand;
         private decimal _currentObv;
         private decimal _previousObv;
-
+        private bool isPortfolioInitialized = false;
         /// <summary>
         /// Инициализация индикаторов
         /// </summary>
@@ -113,6 +114,9 @@
         {
             try
             {
+                if (Portfolio != null && !isPortfolioInitialized)
+                    InitializePortfolio(candle.OpenPrice);
+                
                 // Если свеча не финальная, то выходим
                 if (candle.State != CandleStates.Finished)
                     return;
@@ -180,6 +184,27 @@
                 // Если индикаторы не сформированы, выходим
                 if (!IsFormedAndOnlineAndAllowTrading())
                     return;
+                decimal tradeVolume = 1000m;
+                var Position = GetCurrentPosition();
+                var rsi = _rsi.GetCurrentValue();
+                //test
+                if (Position == 0)
+                {
+                    if (rsi < 10)
+                        BuyMarket(tradeVolume);
+                    if (rsi > 90)
+                        SellMarket(tradeVolume);
+                    return;
+                }
+                else
+                {
+                    if ((rsi < 50 && Position < 0) ||
+                        (rsi > 50 && Position > 0))
+                        CloseCurrentPosition(Position);
+                    return;
+                }
+                //end test
+
 
                 // Проверка сигналов и управление позицией
                 if (_isPositionOpened)

@@ -57,9 +57,8 @@
                 _longEmaElement = priceArea.AddIndicator(_longEma);
                 _longEmaElement.Color = System.Drawing.Color.Purple;
 
-                _bollingerUpperElement = priceArea.AddIndicator(_bollingerBands);
-                _bollingerMiddleElement = priceArea.AddIndicator(_bollingerBands);
-                _bollingerLowerElement = priceArea.AddIndicator(_bollingerBands);
+                _bollingerUpperElement = priceArea.AddIndicator(_bollingerBands.UpBand);
+                _bollingerLowerElement = priceArea.AddIndicator(_bollingerBands.LowBand);
 
                 _rsiElement = indicatorArea.AddIndicator(_rsi);
 
@@ -113,35 +112,35 @@
         //}
 
         // Update chart with stop-loss and take-profit levels
-        private void UpdateStopLossAndTakeProfitLines(decimal stopLossPrice, decimal takeProfitPrice, DateTimeOffset time)
-        {
-            try
-            {
-                var chart = GetChart();
-                if (chart == null)
-                    return;
+        //private void UpdateStopLossAndTakeProfitLines(decimal stopLossPrice, decimal takeProfitPrice, DateTimeOffset time)
+        //{
+        //    try
+        //    {
+        //        var chart = GetChart();
+        //        if (chart == null)
+        //            return;
 
-                var data = chart.CreateData();
+        //        var data = chart.CreateData();
 
-                // Update stop-loss line
-                if (stopLossPrice > 0)
-                {
-                    data.Group(time).Add(_stopLossLine, stopLossPrice);
-                }
+        //        // Update stop-loss line
+        //        if (stopLossPrice > 0)
+        //        {
+        //            data.Group(time).Add(_stopLossLine, stopLossPrice);
+        //        }
 
-                // Update take-profit line
-                if (takeProfitPrice > 0)
-                {
-                    data.Group(time).Add(_takeProfitLine, takeProfitPrice);
-                }
+        //        // Update take-profit line
+        //        if (takeProfitPrice > 0)
+        //        {
+        //            data.Group(time).Add(_takeProfitLine, takeProfitPrice);
+        //        }
 
-                chart.Draw(data);
-            }
-            catch (Exception ex)
-            {
-                LogError($"Error updating stop-loss/take-profit lines: {ex.Message}");
-            }
-        }
+        //        chart.Draw(data);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        LogError($"Error updating stop-loss/take-profit lines: {ex.Message}");
+        //    }
+        //}
         
         /// <summary>
         /// Обновление графика
@@ -190,7 +189,7 @@
                 if (_bollingerBands.IsFormed)
                 {
                     var bollingerValue = _bollingerBands.Process(candle);
-                    group.Add(_bollingerMiddleElement, bollingerValue);
+                    //group.Add(_bollingerMiddleElement, bollingerValue);
 
                     // Для верхней и нижней полос используйте соответствующие значения
                     if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
@@ -216,40 +215,40 @@
         /// <summary>
         /// Обновление графика с отображением уровней стоп-лосса и тейк-профита
         /// </summary>
-        private void UpdateChartWithLevels(ICandleMessage candle, decimal stopLossPrice = 0, decimal takeProfitPrice = 0)
-        {
-            try
-            {
-                var chart = GetChart();
-                if (chart == null)
-                    return;
+        //private void UpdateChartWithLevels(ICandleMessage candle, decimal stopLossPrice = 0, decimal takeProfitPrice = 0)
+        //{
+        //    try
+        //    {
+        //        var chart = GetChart();
+        //        if (chart == null)
+        //            return;
 
-                var data = chart.CreateData();
-                var group = data.Group(candle.OpenTime);
+        //        var data = chart.CreateData();
+        //        var group = data.Group(candle.OpenTime);
 
-                // Добавляем свечи на график
-                group.Add(_candleElement, candle);
+        //        // Добавляем свечи на график
+        //        group.Add(_candleElement, candle);
 
-                // Добавляем индикаторы, если они сформированы
-                if (_fastEma.IsFormed)
-                {
-                    var fastEmaValue = _fastEma.Process(candle);
-                    group.Add(_fastEmaElement, fastEmaValue);
-                }
+        //        // Добавляем индикаторы, если они сформированы
+        //        if (_fastEma.IsFormed)
+        //        {
+        //            var fastEmaValue = _fastEma.Process(candle);
+        //            group.Add(_fastEmaElement, fastEmaValue);
+        //        }
 
-                // Аналогично для других индикаторов...
+        //        // Аналогично для других индикаторов...
 
-                // Для отображения уровней стоп-лосса и тейк-профита можно использовать текстовую аннотацию
-                // или создать специальные элементы в отдельном методе
+        //        // Для отображения уровней стоп-лосса и тейк-профита можно использовать текстовую аннотацию
+        //        // или создать специальные элементы в отдельном методе
 
-                // Рисуем данные
-                chart.Draw(data);
-            }
-            catch (Exception ex)
-            {
-                // Ошибки визуализации не критичны для работы стратегии
-                LogError($"Ошибка при обновлении графика: {ex.Message}");
-            }
-        }
+        //        // Рисуем данные
+        //        chart.Draw(data);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Ошибки визуализации не критичны для работы стратегии
+        //        LogError($"Ошибка при обновлении графика: {ex.Message}");
+        //    }
+        //}
     }
 }

@@ -4,6 +4,10 @@
     using StockSharp.Messages;
     using StockSharp.BusinessEntities;
     using DevExpress.XtraSpellChecker.Parser;
+    using DevExpress.Xpf.Core;
+    using Ecng.ComponentModel;
+    using StockSharp.Algo.Indicators;
+    using Ecng.Common;
 
     public partial class MultiStrategy
     {
@@ -21,28 +25,31 @@
         {
             try
             {
+                var Position = GetCurrentPosition();
                 if (price == 0)
                 {
                     LogError("Нулевое значение цены");
                     return;
                 }
+
                 // Если уже есть открытая позиция, выходим
-                if (_isPositionOpened)
-                    return;
+                if (Position != 0 || _isPositionOpened) return;
 
                 // Расчет параметров позиции
                 decimal atr = _currentAtr;
                 if (atr == 0)
-                    atr = price * 0.01m; // Значение по умолчанию, если ATR не рассчитан
+                    {
+                        LogError("ATR = 0, skip entry point");
+                        return;
+                    }
+                //atr = 5m; // Значение по умолчанию, если ATR не рассчитан TODO -уточнить Default atr
 
+                LogInfo($"__________________ATR = {atr}____________");
                 // Расчет уровней стоп-лосса и тейк-профита
-                decimal stopLossPrice = side == Sides.Buy
-                    ? price - (atr * StopLossMultiplier)
-                    : price + (atr * StopLossMultiplier);
 
-                decimal takeProfitPrice = side == Sides.Buy
-                    ? price + (atr * TakeProfitMultiplier3)
-                    : price - (atr * TakeProfitMultiplier3);
+                decimal stopLossPrice = GetStopLossPriceByATR(atr, side, price);
+
+                decimal takeProfitPrice = GetTakeProfitPriceByATR(atr, side, price);
 
                 // Расчет объема позиции
                 decimal volume = TradeVolume / price;
@@ -65,7 +72,7 @@
                 }
 
                 // Округление объема до шага объема инструмента
-                var volumeStep = Security.VolumeStep ?? 0.01m;
+                var volumeStep = Security.VolumeStep ?? 1m;
                 volume = Math.Floor(volume / volumeStep) * volumeStep;
 
                 // Проверка минимального объема
@@ -79,9 +86,19 @@
 
                 // Создание рыночного ордера
                 if (side == Sides.Buy)
-                    BuyMarket(volume);
+                {
+                    var order = this.CreateOrder(Sides.Buy, 0, volume); // 0 price for market order
+                    order.Type = OrderTypes.Market;
+                    RegisterOrder(order);
+                    LogInfo($"Registering BUY market order: volume={volume}");
+                }
                 else
-                    SellMarket(volume);
+                {
+                    var order = this.CreateOrder(Sides.Sell, 0, volume);
+                    order.Type = OrderTypes.Market;
+                    RegisterOrder(order);
+                    LogInfo($"Registering SELL market order: volume={volume}");
+                }
 
                 // Обновление состояния стратегии
                 _isTrailingStopActivated = false;
@@ -104,6 +121,22 @@
             }
         }
 
+        #region Расчет уровней стоп-лосса и тейк-пр
+        private decimal GetStopLossPriceByATR(decimal ATR, Sides side, decimal price)
+        {
+            return side == Sides.Buy
+            ? price - (ATR * StopLossMultiplier)
+                    : price + (ATR * StopLossMultiplier);
+        }
+
+        private decimal GetTakeProfitPriceByATR(decimal ATR, Sides side, decimal price)
+        {
+            return side == Sides.Buy
+                    ? price + (ATR * TakeProfitMultiplier3)
+                    : price - (ATR * TakeProfitMultiplier3);
+        }
+        #endregion
+
         /// <summary>
         /// Управление позицией
         /// </summary>
@@ -119,7 +152,6 @@
 
                 if (position == 0)
                 {
-                    _isPositionOpened = false;
                     return;
                 }
 
@@ -355,6 +387,13 @@
             }
         }
 
+        void CloseCurrentPosition(decimal value)
+        {
+            if (value > 0)
+                SellMarket(value);
+            else BuyMarket(value.Abs());
+        }
+        
         private decimal GetCurrentPosition()
         {
             

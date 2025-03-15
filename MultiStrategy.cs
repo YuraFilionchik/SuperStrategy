@@ -2,9 +2,11 @@
 {
     using System;
     using Ecng.Logging;
+    using NuGet.Common;
     using StockSharp.Algo;
     using StockSharp.Algo.Strategies;
     using StockSharp.BusinessEntities;
+    using StockSharp.Logging;
     using StockSharp.Messages;
 
     /// <summary>
@@ -12,11 +14,12 @@
     /// </summary>
     public partial class MultiStrategy : Strategy
     {
-        /// <summary>
+         ///<summary>
         /// Конструктор стратегии
-        /// </summary>
+       /// </summary>
         public MultiStrategy()
         {
+            
             // Инициализация логирования
             InitializeLogging();
 
@@ -25,21 +28,23 @@
 
             // Инициализация индикаторов
             InitializeIndicators();
-            
-        }
-
+        }        
         
-
         /// <summary>
         /// Запуск стратегии
         /// </summary>
         protected override void OnStarted(DateTimeOffset time)
         {
             base.OnStarted(time);
-            this.NewMyTrade += OnNewMyTrade;
+
+            if (!IsSecurityValid())
+            {
+                Stop(new("Плохие данные Security"));
+            }
+
             // Логирование запуска стратегии
             LogInfo("Стратегия запущена.");
-
+            
             // Добавляем индикаторы в коллекцию стратегии
             AddIndicatorsToStrategy();
             InitializeStatistics();
@@ -62,8 +67,7 @@
             // Подписываемся на свечи
             Subscribe(subscription5m);
             Subscribe(subscription1h);
-            if (Portfolio!=null)
-            InitializePortfolio();
+            
         }
 
         protected override void OnStopped()
@@ -90,15 +94,16 @@
 
         protected override void OnNewMyTrade(MyTrade trade)
         {
-            LogInfo($"Новая сделка: {trade.Trade.Id}, Цена: {trade.Trade.Price}, Объем: {trade.Trade.Volume}, Position: {Position}");
+            base.OnNewMyTrade(trade);
+            var Position = GetCurrentPosition();
             _isPositionOpened = Position != 0;
-
+            
             // Если позиция открыта (или частично открыта)
-            if (Math.Abs(Position) > 0 && _lastEntryPrice == 0)
+            if (Position != 0 && _lastEntryPrice == 0)
             {
                 _lastEntryPrice = trade.Trade.Price;
                 _tradeEntryVolume = trade.Trade.Volume;
-                LogInfo($"Зафиксирована цена входа: {_lastEntryPrice}, объем: {_tradeEntryVolume}");
+                LogInfo($"Зафиксирована цена входа: {_lastEntryPrice}, объем: {_tradeEntryVolume} ({_lastEntryPrice * _tradeEntryVolume}$)");
             }
             // Если позиция закрыта (или частично закрыта)
             else if (Position == 0 || (Math.Sign(Position) != Math.Sign(Position - trade.Trade.Volume)))
@@ -153,6 +158,26 @@
                         _tradeEntryVolume = Math.Abs(Position);
                     }
                 }
+            }
+        }
+
+        protected override void OnOrderRegisterFailed(OrderFail fail, bool calcRisk)
+        {
+            base.OnOrderRegisterFailed(fail, calcRisk);
+            LogError($"Order registration failed: {fail.Error}");
+        }
+
+        protected override void OnOrderChanged(Order order)
+        {
+            base.OnOrderChanged(order);
+            var Position = GetCurrentPosition();
+            if (order.State == OrderStates.Done)
+            {
+                LogInfo($"Order {order.TransactionId} executed. Position now: {Position}");
+            }
+            else if (order.State == OrderStates.Failed)
+            {
+                LogError($"Order {order.TransactionId} failed");
             }
         }
 
@@ -219,6 +244,37 @@
             LogInfo($"Stop-Loss: {stopLossPrice:F8} ({(Math.Abs(stopLossPrice - entryPrice) / entryPrice):P2})");
             LogInfo($"Take-Profit: {takeProfitPrice:F8} ({(Math.Abs(takeProfitPrice - entryPrice) / entryPrice):P2})");
             LogInfo($"=====================");
+        }
+        
+        private bool IsSecurityValid()
+        {
+            if (Security == null)
+            {
+                LogError("Security is null. Стратегия не была запущена");
+                return false;
+            }
+            return true;
+            //LogInfo("======Security info======");
+            //LogInfo(Security.ToString());
+            //LogInfo($"Security settings: VolumeStep={Security.VolumeStep}, PriceStep={Security.PriceStep}");
+
+            //bool result = Security.VolumeStep != null && Security.VolumeStep != 0 &&
+            //    Security.PriceStep != null && Security.PriceStep != 0;
+
+            //if (!result) LogInfo("Стратегия не запущена из-за плохих данных Security");
+            //return result;
+                
+        }
+
+        private void InitializePortfolio(Decimal price)
+        {
+            //Portfolio.BeginValue = TradeVolume     / price;
+            //Portfolio.CurrentValue = TradeVolume / price;
+            //Portfolio.Currency = Ecng.Common.CurrencyTypes.USDT;
+            //Portfolio.Security = Security;
+            //Portfolio.StrategyId = this.Id.ToString();
+            
+            isPortfolioInitialized = true;
         }
     }
 }

@@ -60,8 +60,8 @@
             _atrPeriod = Param("AtrPeriod", 14)
                 .SetDisplay("Период ATR", "Период для ATR (по умолчанию 14)", "Индикаторы волатильности");
 
-            _tradeVolume = Param("TradeVolume", 1.0m)
-                .SetDisplay("Объем торговли, USDT", "Базовый объем для торговли (по умолчанию 1.0)", "Управление позицией");
+            _tradeVolume = Param("Trade Volume USD", 100.0m)
+                .SetDisplay("Объем торговли, USDT", "Базовый объем для торговли (по умолчанию 100.0)", "Управление позицией");
 
             _stopLossMultiplier = Param("StopLossMultiplier", 1.5m)
                 .SetDisplay("Множитель Stop-Loss", "Множитель ATR для Stop-Loss (по умолчанию 1.5)", "Управление позицией");
@@ -231,13 +231,6 @@
         }
         #endregion
 
-        private void InitializePortfolio()
-        {
-            Portfolio.BeginValue = 100;
-            Portfolio.CurrentValue = 100;
-            Portfolio.Currency = Ecng.Common.CurrencyTypes.USDT;
-            Portfolio.Name = "Test";
-
-        }
-    }
+        
+    }   
 }

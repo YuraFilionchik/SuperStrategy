@@ -214,6 +214,8 @@
                 // Получение текущей цены
                 decimal currentPrice = candle.ClosePrice;
 
+                
+                
                 // Проверка фильтров
                 if (!CheckTimeFilter() || !CheckVolatilityFilter())
                     return;

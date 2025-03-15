@@ -8,21 +8,20 @@
 
     public partial class MultiStrategy
     {
-        private bool LogToFile = true;
-        private bool LogToConsole = true;
+        private readonly bool LogToFile = true;
+        private readonly bool LogToConsole = true;
         // Логирование
-        private readonly Ecng.Logging.LogManager _logManager = new Ecng.Logging.LogManager();
 
         /// <summary>
         /// Инициализация логирования
         /// </summary>
         private void InitializeLogging()
         {
+            LogLevel = Ecng.Logging.LogLevels.Info;
             try
             {
                 // Получаем существующий LogManager
                 var logManager = Ecng.Logging.LogManager.Instance;
-                
                 // Добавляем слушателя для файла
                 if (LogToFile)
                 {
@@ -40,7 +39,7 @@
                  {
                     logManager.Listeners.Add(ConsoleListener);
                     LogInfo($"Логирование в консоль инициализировано");
-                }
+                 }
 
                 // Добавляем источник (стратегию)
                 logManager.Sources.Add(this);
