@@ -4,6 +4,7 @@
     using StockSharp.Messages;
     using StockSharp.Charting;
     using StockSharp.Algo.Indicators;
+    using Newtonsoft.Json.Linq;
 
     public partial class MultiStrategy
     {
@@ -20,6 +21,7 @@
         private IChartOrderElement _ordersElement;
         private IChartLineElement _stopLossLine;
         private IChartLineElement _takeProfitLine;
+        private IChart _chart;
 
         /// <summary>
         /// Инициализация графика
@@ -28,8 +30,10 @@
         {
             try
             {
-                var chart = GetChart();
-                if (chart == null)
+                // Инициализация графика
+                _chart = GetChart();
+
+                if (_chart == null)
                 {
                     LogInfo("Chart unavailable, visualization disabled.");
                     return;
@@ -41,12 +45,7 @@
 
                 // Add elements to chart
                 _candleElement = priceArea.AddCandles();
-
-                // Add order and trade visualization
-                //_ordersElement = DrawOrders(priceArea);
                 _tradesElement = DrawOwnTrades(priceArea);
-                //_tradesElement = priceArea.AddTrades();
-                //_tradesElement.DrawSize = 5;
                 
                 // Add indicators
                 _fastEmaElement = priceArea.AddIndicator(_fastEma);
@@ -56,10 +55,10 @@
                 _slowEmaElement.Color = System.Drawing.Color.Red;
 
                 _longEmaElement = priceArea.AddIndicator(_longEma);
-                _longEmaElement.Color = System.Drawing.Color.Purple;
+                _longEmaElement.Color = System.Drawing.Color.Green;
 
-                _bollingerUpperElement = priceArea.AddIndicator(_bollingerBands.UpBand);
-                _bollingerLowerElement = priceArea.AddIndicator(_bollingerBands.LowBand);
+                //_bollingerUpperElement = priceArea.AddIndicator(_bollingerBands.UpBand);
+                //_bollingerLowerElement = priceArea.AddIndicator(_bollingerBands.LowBand);
 
                 _rsiElement = indicatorArea.AddIndicator(_rsi);
 
@@ -70,78 +69,6 @@
                 LogErrorDetailed("Error initializing chart", ex);
             }
         }
-        //private void InitializeChart()
-        //{
-        //    try
-        //    {
-        //        var chart = GetChart();
-        //        if (chart == null)
-        //        {
-        //            LogInfo("График недоступен, визуализация отключена.");
-        //            return;
-        //        }
-
-        //        // Создаем области графика
-        //        var priceArea = CreateChartArea();
-        //        var indicatorArea = CreateChartArea();
-
-        //        // Добавляем элементы на график
-        //        _candleElement = priceArea.AddCandles();
-        //        _tradesElement = priceArea.AddTrades();
-
-        //        // Добавляем индикаторы на график
-        //        _fastEmaElement = priceArea.AddIndicator(_fastEma);
-        //        _slowEmaElement = priceArea.AddIndicator(_slowEma);
-        //        _longEmaElement = priceArea.AddIndicator(_longEma);
-
-        //        _bollingerUpperElement = priceArea.AddIndicator(_bollingerBands);
-        //        _bollingerMiddleElement = priceArea.AddIndicator(_bollingerBands);
-        //        _bollingerLowerElement = priceArea.AddIndicator(_bollingerBands);
-
-        //        _rsiElement = indicatorArea.AddIndicator(_rsi);
-
-        //        // Настраиваем отображение собственных сделок
-        //        DrawOwnTrades(priceArea);
-        //        DrawOrders(priceArea);
-
-        //        LogInfo("График инициализирован успешно.");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LogErrorDetailed("Ошибка при инициализации графика", ex);
-        //    }
-        //}
-
-        // Update chart with stop-loss and take-profit levels
-        //private void UpdateStopLossAndTakeProfitLines(decimal stopLossPrice, decimal takeProfitPrice, DateTimeOffset time)
-        //{
-        //    try
-        //    {
-        //        var chart = GetChart();
-        //        if (chart == null)
-        //            return;
-
-        //        var data = chart.CreateData();
-
-        //        // Update stop-loss line
-        //        if (stopLossPrice > 0)
-        //        {
-        //            data.Group(time).Add(_stopLossLine, stopLossPrice);
-        //        }
-
-        //        // Update take-profit line
-        //        if (takeProfitPrice > 0)
-        //        {
-        //            data.Group(time).Add(_takeProfitLine, takeProfitPrice);
-        //        }
-
-        //        chart.Draw(data);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LogError($"Error updating stop-loss/take-profit lines: {ex.Message}");
-        //    }
-        //}
         
         /// <summary>
         /// Обновление графика
@@ -150,53 +77,35 @@
         {
             try
             {
-                var chart = GetChart();
-                if (chart == null)
+                if (_chart == null)
                     return;
-
-                var data = chart.CreateData();
-                var group = data.Group(candle.OpenTime);
                 
+                var data = _chart.CreateData();
+                var group = data.Group(candle.OpenTime);
+               
                 
                 // Добавляем данные на график
                 group.Add(_candleElement, candle);
+                group.Add(_slowEmaElement, slowEmaValue);
+                group.Add(_rsiElement, rsiValue);
+                group.Add(_fastEmaElement, fastEmaValue);
+                
 
-                // Добавляем индикаторы, если они сформированы
-                if (_fastEma.IsFormed)
-                {
-                    group.Add(_fastEmaElement, _fastEma.GetCurrentValue<IIndicatorValue>() );
-                }
+                //if (_bollingerBands.IsFormed)
+                //{
+                //    // Для верхней и нижней полос используйте соответствующие значения
+                //    if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
+                //    {
+                //        var upBandValue = _bollingerBands.UpBand.GetCurrentValue<IIndicatorValue>();
+                //        var lowBandValue = _bollingerBands.LowBand.GetCurrentValue<IIndicatorValue>();
 
-                if (_slowEma.IsFormed)
-                {
-                    group.Add(_slowEmaElement, _slowEma.GetCurrentValue<IIndicatorValue>());
-                }
-
-                if (_longEma.IsFormed)
-                {
-                    group.Add(_longEmaElement, _longEma.GetCurrentValue<IIndicatorValue>());
-                }
-
-                if (_rsi.IsFormed)
-                {
-                    group.Add(_rsiElement, _rsi.GetCurrentValue<IIndicatorValue>());
-                }
-
-                if (_bollingerBands.IsFormed)
-                {
-                    // Для верхней и нижней полос используйте соответствующие значения
-                    if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
-                    {
-                        var upBandValue = _bollingerBands.UpBand.GetCurrentValue<IIndicatorValue>();
-                        var lowBandValue = _bollingerBands.LowBand.GetCurrentValue<IIndicatorValue>();
-
-                        group.Add(_bollingerUpperElement, upBandValue);
-                        group.Add(_bollingerLowerElement, lowBandValue);
-                    }
-                }
+                //        group.Add(_bollingerUpperElement, upBandValue);
+                //        group.Add(_bollingerLowerElement, lowBandValue);
+                //    }
+                //}
 
                 // Рисуем данные
-                chart.Draw(data);
+                _chart.Draw(data);
             }
             catch (Exception ex)
             {

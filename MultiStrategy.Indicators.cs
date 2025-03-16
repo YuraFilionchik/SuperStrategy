@@ -1,9 +1,11 @@
 ﻿namespace SuperStrategy
 {
     using System;
+    using Ecng.Logging;
     using GeneticSharp;
     using StockSharp.Algo.Candles;
     using StockSharp.Algo.Indicators;
+    using StockSharp.Charting;
     using StockSharp.Messages;
 
     public partial class MultiStrategy
@@ -13,6 +15,7 @@
         private ExponentialMovingAverage _slowEma;
         private ExponentialMovingAverage _longEma;
 
+        
         // Индикаторы перекупленности/перепроданности
         private RelativeStrengthIndex _rsi;
 
@@ -24,6 +27,13 @@
         private OnBalanceVolume _obv;
 
         // Текущие и предыдущие значения индикаторов
+        IIndicatorValue fastEmaValue;
+        IIndicatorValue slowEmaValue;
+        IIndicatorValue rsiValue;
+        IIndicatorValue atrValue;
+        IIndicatorValue obvValue;
+        IIndicatorValue bbValue;
+        IIndicatorValue longEmaValue;
         private decimal _currentFastEma;
         private decimal _previousFastEma;
         private decimal _currentSlowEma;
@@ -38,7 +48,9 @@
         private decimal _currentLowerBand;
         private decimal _currentObv;
         private decimal _previousObv;
+        
         private bool isPortfolioInitialized = false;
+        
         /// <summary>
         /// Инициализация индикаторов
         /// </summary>
@@ -93,14 +105,21 @@
         {
             try
             {
+                if (candle.State != CandleStates.Finished)
+                    return;
                 // Обработка 1-часовой свечи
-                _longEma.Process(candle);
-                _currentLongEma = _longEma.GetCurrentValue();
-
+                longEmaValue =_longEma.Process(candle);
+                _currentLongEma = longEmaValue.GetValue<Decimal>();
                 // Обновляем график
-               // UpdateChart(candle);
+                if (_chart == null)
+                    return;
 
-               // LogInfo($"Обработана 1-часовая свеча: {candle.OpenTime}, LongEMA={_currentLongEma}");
+                var data = _chart.CreateData();
+                var group = data.Group(candle.OpenTime);
+                group.Add(_longEmaElement, longEmaValue);
+                // Рисуем данные
+                _chart.Draw(data);
+                //LogInfo($"Обработана 1-часовая свеча: {candle.CloseTime}, LongEMA={_currentLongEma}");
             }
             catch (Exception ex)
             {
@@ -115,12 +134,12 @@
         {
             try
             {
-                if (Portfolio != null && !isPortfolioInitialized)
-                    InitializePortfolio(candle.OpenPrice);
-                
                 // Если свеча не финальная, то выходим
                 if (candle.State != CandleStates.Finished)
                     return;
+                
+                if (Portfolio != null && !isPortfolioInitialized)
+                    InitializePortfolio(candle.OpenPrice);
                 
                 #region Обработка индикаторов и сохранение текущих значений
 
@@ -130,51 +149,42 @@
                 _previousRsi = _currentRsi;
                 _previousObv = _currentObv;
 
-                ProcessIndicators(candle);
-
-                
-
-                
+                ProcessIndicators5m(candle);               
+                                
                 #endregion
-                // Логирование значений индикаторов
-                //LogInfo($"Индикаторы: FastEMA={_currentFastEma:F8}, SlowEMA={_currentSlowEma:F8}, RSI={_currentRsi:F2}, ATR={_currentAtr:F8}");
-                //LogInfo($"Bollinger: Mid={_currentMiddleBand:F8}, Up={_currentUpperBand:F8}, Low={_currentLowerBand:F8}");
-
-                // Обновляем график
-                UpdateChart(candle);
 
                 // Если индикаторы не сформированы, выходим
                 if (!IsFormedAndOnlineAndAllowTrading())
                     return;
-                decimal tradeVolume = 1000m;
+
+                decimal tradeVolume = (0.9m * TradeVolume) / candle.OpenPrice;
                 var Position = GetCurrentPosition();
-                var rsi = _currentRsi;
                 //test
+                var rsi = _currentRsi;
                 if (Position == 0)
                 {
-                    if (rsi < 10)
+                    if (rsi < 30)
                         BuyMarket(tradeVolume);
-                    if (rsi > 90)
+                    if (rsi > 67)
                         SellMarket(tradeVolume);
                     return;
                 }
                 else
                 {
-                    if ((rsi < 50 && Position < 0) ||
-                        (rsi > 50 && Position > 0))
+                    if ((rsi < 60 && Position < 0) ||
+                        (rsi > 40 && Position > 0))
                         CloseCurrentPosition(Position);
                     return;
                 }
                 //end test
 
-
                 // Проверка сигналов и управление позицией
-                if (_isPositionOpened)
+                if (Position != 0)
                 {
-                    //ManagePosition(candle);
+                    ManagePosition(candle);
                     if ((CurrentTime - _positionOpenTime).TotalMinutes > 60)
                     {
-                        ClosePosition();
+                        CloseCurrentPosition(Position);
                         LogInfo($"ClosePosition - {CurrentTime}");
                         _isPositionOpened = false;
                         return;
@@ -187,7 +197,7 @@
             }
             catch (Exception ex)
             {
-                LogErrorDetailed("Ошибка в ProcessCandles5m", ex);
+                LogErrorDetailed($"Ошибка в ProcessCandles5m({candle.OpenTime} - {candle.CloseTime})", ex);
             }
         }
 
@@ -200,49 +210,80 @@
                    _slowEma.IsFormed &&
                    _longEma.IsFormed &&
                    _rsi.IsFormed &&
-                   _bollingerBands.IsFormed &&
+                   //_bollingerBands.IsFormed &&
                    _atr.IsFormed &&
                    _obv.IsFormed;
         }
         
-        void ProcessIndicators(ICandleMessage candle)
+        void ProcessIndicators5m(ICandleMessage candle)
         {
-            _fastEma.Process(candle);
-            _slowEma.Process(candle);
-            _rsi.Process(candle);
-            _atr.Process(candle);
-            _obv.Process(candle);
-            _bollingerBands.Process(candle);
-
-            _currentFastEma = _fastEma.GetCurrentValue();
-            _currentSlowEma = _slowEma.GetCurrentValue();
-            _currentRsi = _rsi.GetCurrentValue();
-            _currentAtr = _atr.GetCurrentValue();
-            _currentObv = _obv.GetCurrentValue();
+             fastEmaValue = _fastEma.Process(candle);
+             slowEmaValue = _slowEma.Process(candle);
+             rsiValue = _rsi.Process(candle);
+             atrValue = _atr.Process(candle);
+             obvValue = _obv.Process(candle);
+             bbValue = _bollingerBands.Process(candle);
+            
+            // Преобразуем в десятичные значения
+            if (fastEmaValue.IsFormed && !fastEmaValue.IsEmpty)
+            _currentFastEma = fastEmaValue.GetValue<decimal>();
+            
+            if (slowEmaValue.IsFormed && !slowEmaValue.IsEmpty)
+            _currentSlowEma = slowEmaValue.GetValue<decimal>();
+            
+            if (rsiValue.IsFormed && !rsiValue.IsEmpty)
+            _currentRsi = rsiValue.GetValue<decimal>();
+            
+            if (atrValue.IsFormed && !atrValue.IsEmpty)
+            _currentAtr = atrValue.GetValue<decimal>();
+            
+            if (obvValue.IsFormed && !obvValue.IsEmpty)
+            _currentObv = obvValue.GetValue<decimal>();
 
             // Обработка Bollinger Bands
-            try
-            {
-                _currentMiddleBand = _bollingerBands.MovingAverage.GetCurrentValue();
+            //try
+            //{  if (_bollingerBands.IsFormed)
+            //    {
+            //        _currentMiddleBand = _bollingerBands.GetCurrentValue();
 
-                // Для верхней и нижней полосы используем несколько подходов
-                if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
-                {
-                    _bollingerBands.UpBand.Process(candle);
-                    _bollingerBands.LowBand.Process(candle);
-                    _currentUpperBand = _bollingerBands.UpBand.GetCurrentValue();
-                    _currentLowerBand = _bollingerBands.LowBand.GetCurrentValue();
-                }
-                else
-                {
-                    _currentUpperBand = 0;
-                    _currentLowerBand = 0;
-                }
-            }
-            catch (Exception ex)
+
+            //        // Для верхней и нижней полосы используем несколько подходов
+            //        if (_bollingerBands.UpBand != null && _bollingerBands.LowBand != null)
+            //        {
+            //            //_bollingerBands.UpBand.Process(candle);
+            //            //_bollingerBands.LowBand.Process(candle);
+            //            _currentUpperBand = _bollingerBands.UpBand.GetCurrentValue();
+            //            _currentLowerBand = _bollingerBands.LowBand.GetCurrentValue();
+            //        }
+            //        else
+            //        {
+            //            _currentUpperBand = 0;
+            //            _currentLowerBand = 0;
+            //        }
+            //    }else
+            //    {
+            //        _currentUpperBand = 0;
+            //        _currentLowerBand = 0;
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    LogError($"Ошибка при обработке Bollinger Bands: {ex.Message}");
+            //}
+
+            //UpdateChart(candle, fastEmaValue, slowEmaValue, rsiValue);//, bbValue);
+            UpdateChart(candle);
+        }
+
+        bool IsCandle1h(ICandleMessage candle)
+        {
+            if (candle.OpenTime != default && candle.CloseTime != default)
             {
-                LogError($"Ошибка при обработке Bollinger Bands: {ex.Message}");
+                TimeSpan approximateTimeFrame = candle.CloseTime - candle.OpenTime;
+                if (approximateTimeFrame > new TimeSpan(0, 59, 0) && approximateTimeFrame < new TimeSpan(1, 1, 0))
+                    return true;
             }
+            return false;
         }
     }
 }

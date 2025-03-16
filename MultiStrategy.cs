@@ -54,7 +54,7 @@
             var subscription5m = new Subscription(TimeFrame5m, Security);
             var subscription1h = new Subscription(TimeFrame1h, Security);
 
-            // Инициализируем график
+            // Инициализация графика
             InitializeChart();
 
             // Устанавливаем обработчики для свечей
